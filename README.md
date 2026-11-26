@@ -34,7 +34,7 @@ MAKEFUN_OUTPUT_DIR=/tmp/hb-v2-out node main.ts
 
 This copies `app/` and the existing `screenshots/` into `/tmp/hb-v2-out` and writes `dossier.json`. Without `MAKEFUN_OUTPUT_DIR`, the default destination is `/output`.
 
-`main.ts`, `serve.ts`, `shots.json`, `screenshots/`, and the vendored make.fun kit are unchanged. Building locally does not submit the entry.
+`main.ts` has an authored HomeBudget header comment; its executable lines are unchanged. `serve.ts`, `shots.json`, `screenshots/`, and the vendored make.fun kit are unchanged. Building locally does not submit the entry.
 
 ## Verify
 
@@ -63,6 +63,24 @@ node /tmp/hb-v2-verify.mjs
 ```
 
 The verifier and its original-file reference are temporary verification artifacts outside the repository. Screenshots were preserved from the original entry; they were not regenerated during these offline checks.
+
+## How to verify
+
+Run the site locally:
+
+```sh
+node serve.ts
+```
+
+Open `http://localhost:8080` and visit all five routes: `#/`, `#/transactions`, `#/budgets`, `#/goals`, and `#/reports`. Use **Reset demo data** before comparing the starting figures.
+
+Build the dossier in a temporary output directory:
+
+```sh
+MAKEFUN_OUTPUT_DIR=/tmp/hb-out node main.ts
+```
+
+Check that `/tmp/hb-out/dossier.json` is valid JSON containing **cover**, **images**, **schema**, and **text**. Confirm income is **$5,850**, total spent is **$3,663.77**, and saved is **$2,186.23**. Only **Utilities** should be over budget, by **$16.29**. The dashboard rounds spending and savings to whole dollars; use the detailed views or the data calculations for cents. In a sandbox that blocks live servers, render the five views offline instead.
 
 ## Screenshots
 

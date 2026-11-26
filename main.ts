@@ -1,3 +1,8 @@
+// HomeBudget entry for make.fun's "Make the best household budget site" competition.
+// Copies app/ and screenshots/ to the output directory and writes dossier.json
+// through the vendored makefun-frontend buildDossier function.
+// Run: MAKEFUN_OUTPUT_DIR=/tmp/hb-out node main.ts
+//
 // A working best-site-01 entry (Node 22, standard library only): the site is this directory's app/ folder, plain
 // static files a browser opens at app/index.html (ES modules, CSS, no build step), its content held in its own files:
 // nothing it runs, styles or shows loads over the network. The program hands it in: it copies app/ and screenshots/
