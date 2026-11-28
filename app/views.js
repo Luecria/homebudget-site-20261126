@@ -66,6 +66,7 @@ ${join(top, category => categoryRow(category, money(category.spent)) + progressB
 <p><a href="#/transactions">All transactions &rarr;</a></p>
 <h2>Upcoming bills</h2>
 <ul class="tx-list">${join(bills, bill => `<li><span class="tx-desc">${escape(bill.name)}</span><span class="tx-meta">due ${escape(bill.due)}${bill.autopay ? ' · autopay' : ''}</span><span class="tx-amt">${money(bill.amount)}</span></li>`)}</ul>
+<p><a href="#/bills">Manage bills &rarr;</a></p>
 </section></div>
 <section class="panel"><h2>Savings goals</h2>
 <div class="goals">${join(state.goals, goal => `<div class="goal">${goalHeading(goal)}${goalBar(goal)}<p class="muted">${escape(goal.note)}</p></div>`)}</div>
@@ -96,6 +97,29 @@ export function transactions(state, filter) {
 <label>Category <select name="category">${categoryOptions(categories)}</select></label>
 <label>Date <input name="date" type="date" value="2026-11-26" required></label>
 <button type="submit">Add transaction</button>
+</form>`;
+}
+
+export function bills(state) {
+  const unpaid = state.bills.filter(bill => !bill.paid).length;
+  const total = state.bills.reduce((sum, bill) => sum + (!bill.paid ? Number(bill.amount) : 0), 0);
+  const autopay = state.bills.filter(bill => bill.autopay).length;
+  const sorted = [...state.bills].sort((a, b) => a.due.localeCompare(b.due));
+  const rows = join(sorted, bill => {
+    const paid = Boolean(bill.paid);
+    return `<tr><td>${escape(bill.name)}</td><td>${escape(bill.due)}</td><td class="num">${money(bill.amount)}</td><td>${bill.autopay ? 'Yes' : 'No'}</td><td>${paid ? 'Paid' : 'Unpaid'}</td><td><button type="button" data-action="bill-toggle" data-id="${escape(bill.id)}">Mark ${paid ? 'unpaid' : 'paid'}</button> <button type="button" class="del" data-action="bill-del" data-id="${escape(bill.id)}" aria-label="Delete ${escape(bill.name)}">Delete</button></td></tr>`;
+  });
+  return `<h1>Bills — December 2026</h1>
+<p class="lede">${money(total)} total due this month · ${unpaid} unpaid · ${autopay} on autopay.</p>
+<table class="tx-table"><thead><tr><th>Bill</th><th>Due date</th><th class="num">Amount</th><th>Autopay</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody>${rows || '<tr><td colspan="6">No bills yet. Add one below.</td></tr>'}</tbody></table>
+<h2>Add a bill</h2>
+<form id="bill-add" class="form-grid">
+<label>Bill name <input name="name" required maxlength="80" placeholder="e.g. Water bill"></label>
+<label>Amount (USD) <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"></label>
+<label>Due date <input name="due" type="date" value="2026-12-01" required></label>
+<label class="check-field"><input name="autopay" type="checkbox"> Autopay</label>
+<button type="submit">Add bill</button>
 </form>`;
 }
 

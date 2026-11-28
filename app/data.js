@@ -64,7 +64,7 @@ export const BILLS = [
   ['b-4', 'Car insurance — Geico', '2026-12-12', 145.00, false],
   ['b-5', 'Gym — FitLife', '2026-12-15', 39.00, true],
   ['b-6', 'Phone — T-Mobile', '2026-12-20', 65.00, true],
-].map(([id, name, due, amount, autopay]) => ({ id, name, due, amount, autopay }));
+].map(([id, name, due, amount, autopay]) => ({ id, name, due, amount, autopay, paid: false }));
 
 export const GOALS = [
   ['g-1', 'Emergency fund', 12000, 8400, '6 months of expenses'],

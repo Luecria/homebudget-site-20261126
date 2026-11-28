@@ -1,6 +1,6 @@
 // Hash navigation and delegated controls share a single persisted household.
 import { HOUSEHOLD, CATEGORIES, INCOME, TRANSACTIONS, BILLS, GOALS, MONTHS } from './data.js';
-import { dashboard, transactions, budgets, goals, reports, missing } from './views.js';
+import { dashboard, transactions, bills, budgets, goals, reports, missing } from './views.js';
 
 const STORAGE_KEY = 'homebudget-v1';
 const outlet = document.getElementById('app');
@@ -8,6 +8,7 @@ const pages = {
   '': { title: 'Dashboard', view: dashboard },
   transactions: { title: 'Transactions', view: transactions },
   budgets: { title: 'Budgets', view: budgets },
+  bills: { title: 'Bills', view: bills },
   goals: { title: 'Savings goals', view: goals },
   reports: { title: 'Reports', view: reports },
 };
@@ -112,6 +113,22 @@ const submissions = {
     });
     storeAndRender();
   },
+  'bill-add'(form) {
+    const fields = new FormData(form);
+    const amount = Number(fields.get('amount'));
+    const name = String(fields.get('name') || '').trim();
+    const due = String(fields.get('due') || '');
+    if (!name || !(amount > 0) || !due) return;
+    state.bills.push({
+      id: `b-${Date.now()}`,
+      name,
+      due,
+      amount: Math.round(amount * 100) / 100,
+      autopay: fields.has('autopay'),
+      paid: false,
+    });
+    storeAndRender();
+  },
 };
 
 outlet.addEventListener('submit', event => {
@@ -144,6 +161,16 @@ const actions = {
   },
   'goal-del'(button) {
     state.goals = state.goals.filter(item => item.id !== button.dataset.id);
+    storeAndRender();
+  },
+  'bill-toggle'(button) {
+    const bill = state.bills.find(item => item.id === button.dataset.id);
+    if (!bill) return;
+    bill.paid = !bill.paid;
+    storeAndRender();
+  },
+  'bill-del'(button) {
+    state.bills = state.bills.filter(item => item.id !== button.dataset.id);
     storeAndRender();
   },
 };
