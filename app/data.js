@@ -20,6 +20,13 @@ export const CATEGORIES = [
   ['savings', 'Savings', 900, '#0d9488'],
 ].map(([id, name, budget, color]) => ({ id, name, budget, color }));
 
+// October 2026 spending by category; totals $3,910, matching MONTHS.
+// Savings is an allocation, not a spending category.
+export const PREV_MONTH_BY_CAT = {
+  housing: 1650, groceries: 690, transport: 300, utilities: 280,
+  dining: 180, entertainment: 130, health: 190, kids: 280, shopping: 210,
+};
+
 export const INCOME = [
   ['inc-1', '2026-11-01', 'Salary — Maya Alvarez', 4850],
   ['inc-2', '2026-11-15', 'Freelance design — Daniel Alvarez', 1000],
@@ -55,6 +62,12 @@ export const TRANSACTIONS = [
   ['t-27', '2026-11-26', 'Clothes — H&M', 'shopping', 89.99],
   ['t-28', '2026-11-26', 'Shell — fuel', 'transport', 44.75],
   ['t-29', '2026-11-26', 'Household goods — Target', 'shopping', 54.20],
+  ['t-30', '2026-11-27', "Luigi's Pizzeria", 'dining', 56.80],
+  ['t-31', '2026-11-27', 'Parking — downtown garage', 'transport', 22.00],
+  ['t-32', '2026-11-28', "Kids' books — Bookshop", 'kids', 24.00],
+  ['t-33', '2026-11-29', 'Household goods — Target', 'shopping', 19.99],
+  ['t-34', '2026-11-30', 'Safeway', 'groceries', 8.95],
+  ['t-35', '2026-11-30', 'Sushi House', 'dining', 38.50],
 ].map(([id, date, desc, category, amount]) => ({ id, date, desc, category, amount }));
 
 export const BILLS = [
@@ -78,5 +91,5 @@ export const MONTHS = [
   ['Aug 2026', 5750, 3610],
   ['Sep 2026', 5950, 3840],
   ['Oct 2026', 5850, 3910],
-  ['Nov 2026', 5850, 3663.77],
+  ['Nov 2026', 5850, 3834.01],
 ].map(([month, income, spent]) => ({ month, income, spent }));

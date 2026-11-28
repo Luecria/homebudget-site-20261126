@@ -1,4 +1,5 @@
 // HomeBudget entry for make.fun's "Make the best household budget site" competition.
+// V3 adds Insights, a category donut, spending pace, and the full November household budget.
 // Copies app/ and screenshots/ to the output directory and writes dossier.json
 // through the vendored makefun-frontend buildDossier function.
 // Run: MAKEFUN_OUTPUT_DIR=/tmp/hb-out node main.ts

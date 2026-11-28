@@ -1,6 +1,6 @@
 // Hash navigation and delegated controls share a single persisted household.
 import { HOUSEHOLD, CATEGORIES, INCOME, TRANSACTIONS, BILLS, GOALS, MONTHS } from './data.js';
-import { dashboard, transactions, bills, budgets, goals, reports, missing } from './views.js';
+import { dashboard, transactions, bills, budgets, goals, reports, insights, missing } from './views.js';
 
 const STORAGE_KEY = 'homebudget-v1';
 const outlet = document.getElementById('app');
@@ -11,10 +11,12 @@ const pages = {
   bills: { title: 'Bills', view: bills },
   goals: { title: 'Savings goals', view: goals },
   reports: { title: 'Reports', view: reports },
+  insights: { title: 'Insights', view: insights },
 };
 
 function initialState() {
   return {
+    version: 3,
     household: HOUSEHOLD,
     categories: structuredClone(CATEGORIES),
     income: structuredClone(INCOME),
@@ -30,8 +32,23 @@ function restore() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return initialState();
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed.transactions) && Array.isArray(parsed.categories)
-      ? parsed : initialState();
+    if (!Array.isArray(parsed.transactions) || !Array.isArray(parsed.categories)) return initialState();
+    const restored = { ...initialState(), ...parsed };
+    if (parsed.version !== 3) {
+      // Add the fuller month once, preserving existing edits and bill status.
+      for (const item of TRANSACTIONS.slice(29)) {
+        if (!restored.transactions.some(transaction => transaction.id === item.id)) {
+          restored.transactions.push(structuredClone(item));
+        }
+      }
+      restored.version = 3;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+      } catch {
+        // Keep restored edits available even when storage is read-only.
+      }
+    }
+    return restored;
   } catch {
     return initialState();
   }
@@ -82,7 +99,7 @@ const submissions = {
     if (!fields.get('desc') || !(amount > 0)) return;
     state.transactions.push({
       id: `t-${Date.now()}`,
-      date: fields.get('date') || '2026-11-26',
+      date: fields.get('date') || '2026-11-30',
       desc: String(fields.get('desc')).trim(),
       category: String(fields.get('category')),
       amount: Math.round(amount * 100) / 100,

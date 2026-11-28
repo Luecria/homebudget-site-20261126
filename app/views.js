@@ -1,4 +1,5 @@
 // Pure HTML renderers: the browser controller supplies state and handles actions.
+import { PREV_MONTH_BY_CAT } from './data.js';
 const escape = value => String(value).replace(/[&<>"']/g, character => `&#${character.charCodeAt(0)};`);
 export const money = value => '$' + Number(value).toLocaleString('en-US', {
   minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -19,6 +20,44 @@ export function totals(state) {
     byCat[item.category] = (byCat[item.category] || 0) + item.amount;
   });
   return { income, spent, saved: income - spent, byCat };
+}
+
+export function spendingPace(state) {
+  const summary = totals(state);
+  const dates = state.transactions.map(item => item.date)
+    .filter(date => /^2026-11-(0[1-9]|[12]\d|30)$/.test(date)).sort();
+  // Count from November 1 through the latest entry, including quiet days.
+  const days = dates.length ? Number(dates.at(-1).slice(-2)) : 0;
+  const budget = spendingCategories(state).reduce((sum, category) => sum + category.budget, 0);
+  const daily = days ? summary.spent / days : 0;
+  const projected = daily * 30;
+  return { days, budget, daily, dailyBudget: budget / 30, projected,
+    saving: summary.income - projected, onTrack: projected <= budget };
+}
+
+function paceStrip(state) {
+  const pace = spendingPace(state);
+  return `<section class="panel pace-strip" aria-label="Spending pace">
+<div><h2>Spending pace</h2><span class="pace-verdict ${pace.onTrack ? 'positive' : 'negative'}">${pace.onTrack ? 'On track' : 'Over pace'}</span>
+<p class="muted">${pace.days ? `Nov 1–${pace.days} · ${pace.days} days covered` : 'No November transactions yet'}. Projection uses the daily average × 30 days.</p></div>
+<dl class="pace-metrics"><div><dt>Daily average</dt><dd>${money(pace.daily)}</dd></div>
+<div><dt>Daily budget pace</dt><dd>${money(pace.dailyBudget)}</dd></div>
+<div><dt>Projected month-end spend</dt><dd>${money(pace.projected)}</dd></div>
+<div><dt>Projected month-end saving</dt><dd>${money(pace.saving)}</dd></div></dl>
+</section>`;
+}
+
+function spendingDonut(state, summary) {
+  let end = 0;
+  const categories = spendingCategories(state);
+  const stops = categories.map(category => {
+    const start = end;
+    end += summary.spent ? (summary.byCat[category.id] || 0) / summary.spent * 100 : 0;
+    return `${category.color} ${start}% ${end}%`;
+  });
+  return `<figure class="spending-donut"><div class="donut" role="img" aria-label="November spending by category; amounts and percentages in the legend" style="background:conic-gradient(${summary.spent ? stops.join(',') : '#eee 0% 100%'})">
+<div class="donut-center"><strong>${money(summary.spent)}</strong><span>Total spent</span></div></div>
+<figcaption><ul class="donut-legend">${join(categories, category => `<li><span class="dot" style="background:${category.color}"></span><span>${escape(category.name)}</span><strong>${money(summary.byCat[category.id] || 0)}</strong><span>${summary.spent ? ((summary.byCat[category.id] || 0) / summary.spent * 100).toFixed(1) : '0.0'}%</span></li>`)}</ul></figcaption></figure>`;
 }
 
 function progressBar(spent, budget, color) {
@@ -57,13 +96,18 @@ export function dashboard(state) {
   return `<h1>November 2026</h1>
 <p class="lede">${escape(state.household.name)} — 4 people · all figures in USD, computed from your transactions.</p>
 <section class="cards">${join(cards, ([label, value, note, modifier]) => `<div class="card${modifier}"><span class="card-label">${label}</span><strong class="card-value">${value}</strong><span class="card-note">${note}</span></div>`)}</section>
+${paceStrip(state)}
 <div class="grid2">
 <section class="panel"><h2>Where the money went</h2>
 ${join(top, category => categoryRow(category, money(category.spent)) + progressBar(category.spent, category.budget, category.color))}
 <p><a href="#/budgets">See all budgets &rarr;</a></p></section>
+<section class="panel"><h2>Spending by category</h2>${spendingDonut(state, summary)}
+<p><a href="#/insights">Explore insights &rarr;</a></p></section></div>
+<div class="grid2">
 <section class="panel"><h2>Recent transactions</h2>
 <ul class="tx-list">${join(recent, item => `<li><span class="tx-desc">${escape(item.desc)}</span><span class="tx-meta">${escape(item.date)} · ${escape(categoryName(state, item.category))}</span><span class="tx-amt">−${money(item.amount)}</span></li>`)}</ul>
 <p><a href="#/transactions">All transactions &rarr;</a></p>
+</section><section class="panel">
 <h2>Upcoming bills</h2>
 <ul class="tx-list">${join(bills, bill => `<li><span class="tx-desc">${escape(bill.name)}</span><span class="tx-meta">due ${escape(bill.due)}${bill.autopay ? ' · autopay' : ''}</span><span class="tx-amt">${money(bill.amount)}</span></li>`)}</ul>
 <p><a href="#/bills">Manage bills &rarr;</a></p>
@@ -95,7 +139,7 @@ export function transactions(state, filter) {
 <label>Description <input name="desc" required maxlength="80" placeholder="e.g. Weekly shop"></label>
 <label>Amount (USD) <input name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"></label>
 <label>Category <select name="category">${categoryOptions(categories)}</select></label>
-<label>Date <input name="date" type="date" value="2026-11-26" required></label>
+<label>Date <input name="date" type="date" value="2026-11-30" required></label>
 <button type="submit">Add transaction</button>
 </form>`;
 }
@@ -139,7 +183,7 @@ ${join(categories, category => {
 ${progressBar(spent, category.budget, category.color)}
 <form class="budget-edit" data-cat="${category.id}"><label>Monthly budget <input name="budget" type="number" min="0" step="1" value="${category.budget}" aria-label="Monthly budget for ${escape(category.name)}"></label> <button type="submit">Save</button></form></section>`;
   })}
-<section class="panel"><h2>Savings target</h2><p>This month's savings target is <strong>${money(categoryFor(state, 'savings').budget)}</strong>. So far the household has saved <strong>${money0(summary.saved)}</strong> — above target.</p></section>`;
+<section class="panel"><h2>Savings target</h2><p>This month's savings target is <strong>${money(categoryFor(state, 'savings').budget)}</strong>. So far the household has saved <strong>${money0(summary.saved)}</strong> — ${summary.saved >= categoryFor(state, 'savings').budget ? 'meeting target' : 'below target'}.</p></section>`;
 }
 
 export function goals(state) {
@@ -158,7 +202,10 @@ ${goalBar(goal)}
 </form>`;
 }
 
-export function reports(state) {
+export function reports(input) {
+  const current = totals(input);
+  const state = { ...input, months: input.months.map(month => month.month === 'Nov 2026'
+    ? { ...month, income: current.income, spent: current.spent } : month) };
   const summary = totals(state);
   const maximum = Math.max(...state.months.map(month => Math.max(month.income, month.spent)));
   const categories = spendingCategories(state)
@@ -172,10 +219,52 @@ export function reports(state) {
 <p class="legend"><span class="swatch income"></span> Income &nbsp; <span class="swatch spent"></span> Spending</p>
 <p>Average monthly saving over the last 6 months: <strong>${money0(average)}</strong>.</p></section>
 <section class="panel"><h2>November 2026 by category</h2>
-${join(categories, category => categoryRow(category, `${money(category.spent)} · ${Math.round(category.spent / summary.spent * 100)}%`) + progressBar(category.spent, Math.max(category.spent, category.budget), category.color))}
+${join(categories, category => categoryRow(category, `${money(category.spent)} · ${summary.spent ? Math.round(category.spent / summary.spent * 100) : 0}%`) + progressBar(category.spent, category.budget, category.color))}
 <p>Total spent: <strong>${money(summary.spent)}</strong> of <strong>${money0(summary.income)}</strong> income.</p></section>
 <section class="panel"><h2>Income — November 2026</h2>
 <ul class="tx-list">${join(state.income, item => `<li><span class="tx-desc">${escape(item.source)}</span><span class="tx-meta">${escape(item.date)}</span><span class="tx-amt">+${money(item.amount)}</span></li>`)}</ul></section>`;
+}
+
+export function insights(state) {
+  const summary = totals(state);
+  const categories = spendingCategories(state).map(category => ({ ...category,
+    spent: summary.byCat[category.id] || 0, previous: PREV_MONTH_BY_CAT[category.id] || 0,
+    remaining: category.budget - (summary.byCat[category.id] || 0),
+  }));
+  const merchants = new Map();
+  state.transactions.forEach(item => {
+    const merchant = merchants.get(item.desc) || { name: item.desc, amount: 0, count: 0 };
+    merchant.amount += item.amount;
+    merchant.count++;
+    merchants.set(item.desc, merchant);
+  });
+  const topMerchants = [...merchants.values()].sort((a, b) => b.amount - a.amount).slice(0, 5);
+  const biggest = [...state.transactions].sort((a, b) => b.amount - a.amount).slice(0, 3);
+  const ranked = [...categories].sort((a, b) => b.remaining - a.remaining);
+  const previousTotal = categories.reduce((sum, category) => sum + category.previous, 0);
+  const change = (now, previous) => {
+    const delta = now - previous;
+    return `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${money(Math.abs(delta))} (${previous ? `${delta > 0 ? '+' : ''}${(delta / previous * 100).toFixed(1)}%` : now ? 'new spending' : '0.0%'})`;
+  };
+  const budgetHighlight = (label, category) => category ? `<section class="panel"><h2>${label}</h2>
+<p class="insight-value"><span class="dot" style="background:${category.color}"></span> ${escape(category.name)}</p>
+<p class="${category.remaining < 0 ? 'negative' : 'positive'}">${money(Math.abs(category.remaining))} ${category.remaining < 0 ? 'over budget' : 'under budget'}</p>
+${progressBar(category.spent, category.budget, category.color)}</section>` : '';
+  return `<h1>Insights — November 2026</h1>
+<p class="lede">${escape(state.household.name)} · a closer look at spending, pace, and budget headroom.</p>
+${paceStrip(state)}
+<section class="panel"><h2>Month over month · November vs October 2026</h2>
+<p class="muted">November transactions compared with October's full month. Positive changes mean more spending.</p>
+<div class="insights-table-wrap"><table class="tx-table insights-table"><thead><tr><th>Category</th><th class="num">October</th><th class="num">November</th><th class="num">Change</th></tr></thead>
+<tbody>${join(categories, category => `<tr><td><span class="dot" style="background:${category.color}"></span> ${escape(category.name)}</td><td class="num">${money(category.previous)}</td><td class="num">${money(category.spent)}</td><td class="num">${change(category.spent, category.previous)}</td></tr>`)}</tbody>
+<tfoot><tr><th>Total</th><td class="num">${money(previousTotal)}</td><td class="num">${money(summary.spent)}</td><td class="num">${change(summary.spent, previousTotal)}</td></tr></tfoot></table></div></section>
+<div class="grid2"><section class="panel"><h2>Top 5 merchants by total spend</h2>
+<p class="muted">Repeated transaction descriptions are grouped as one merchant or payee, including rent and bills.</p>
+<ol class="insight-list">${join(topMerchants, merchant => `<li><div><strong>${escape(merchant.name)}</strong><span class="muted">${merchant.count} ${merchant.count === 1 ? 'transaction' : 'transactions'}</span></div><span>${money(merchant.amount)}</span></li>`) || '<li>No spending yet.</li>'}</ol></section>
+<section class="panel"><h2>Top 3 biggest single expenses</h2>
+<ol class="insight-list">${join(biggest, item => `<li><div><strong>${escape(item.desc)}</strong><span class="muted">${escape(item.date)} · ${escape(categoryName(state, item.category))}</span></div><span>${money(item.amount)}</span></li>`) || '<li>No expenses yet.</li>'}</ol></section></div>
+<p class="muted">Best and worst categories are ranked by dollars remaining against their monthly budgets. Savings is excluded from spending comparisons.</p>
+<div class="grid2">${budgetHighlight('Best category vs budget', ranked[0])}${budgetHighlight('Worst category vs budget', ranked.at(-1))}</div>`;
 }
 
 export function missing() {
